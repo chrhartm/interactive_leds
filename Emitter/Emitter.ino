@@ -3,17 +3,16 @@
 Nrf24l Mirf = Nrf24l(10, 9);
 byte value[4];
 
-// Box stuff
-uint8_t hue, decay, delayval, brightness;
-
 // Button stuff
-const int pin_toggle1 = 2;
-const int pin_button1 = 3;
-const int pin_button2 = 4;
-const int pin_rotate1 = 0;
-const int pin_rotate2 = 1;
-const int pin_rotate3 = 2;
-const int pin_rotate4 = 3;
+const int N_PROGRAMS = 2;
+const int PIN_TOGGLE1 = 2;
+const int PIN_BUTTON1 = 3;
+const int PIN_BUTTON2 = 4;
+const int PIN_ROTATE1 = 0;
+const int PIN_ROTATE2 = 1;
+const int PIN_ROTATE3 = 2;
+const int PIN_ROTATE4 = 3;
+
 int toggle1 = 0;
 int button1 = 0;
 int button2 = 0;
@@ -22,33 +21,56 @@ int rotate2 = 0;
 int rotate3 = 0;
 int rotate4 = 0;
 
+int program = 0;
+bool button1_on = 0;
+
 void setup()
 {
   Serial.begin(9600);
   // Radio stuff
   Mirf.spi = &MirfHardwareSpi;
   Mirf.init();
-  Mirf.setTADDR((byte *)"slave2");
+  Mirf.setTADDR((byte *)"slave3");
   Mirf.payload = sizeof(value);
   Mirf.channel = 90;
   Mirf.config();
 
   // Button stuff
-  pinMode(pin_toggle1, INPUT);
+  pinMode(PIN_TOGGLE1, INPUT);
+  pinMode(PIN_BUTTON1, INPUT);
+  pinMode(PIN_BUTTON2, INPUT);
 }
 
-void read(){
-  toggle1 = digitalRead(pin_toggle1);
-  button1 = digitalRead(pin_button1);
-  button2 = digitalRead(pin_button2);
-  rotate1 = 1023-analogRead(pin_rotate1);
-  rotate2 = 1023-analogRead(pin_rotate2);
-  rotate3 = 1023-analogRead(pin_rotate3);
-  rotate4 = 1023-analogRead(pin_rotate4);
-  //printsensors();
+void read_sensors(){
+  toggle1 = digitalRead(PIN_TOGGLE1);
+  button1 = digitalRead(PIN_BUTTON1);
+  button2 = digitalRead(PIN_BUTTON2);
+  rotate1 = 1023-analogRead(PIN_ROTATE1);
+  rotate2 = 1023-analogRead(PIN_ROTATE2);
+  rotate3 = 1023-analogRead(PIN_ROTATE3);
+  rotate4 = 1023-analogRead(PIN_ROTATE4);
 }
 
-void printsensors(){
+void calc(){
+  // Calculate program ID
+  if (button1==HIGH){
+    if (button1_on==0){
+      program = (program+1)%N_PROGRAMS;
+      button1_on = 1;
+    };
+  }
+  else{
+    button1_on = 0;
+  };
+
+  // Normalize sensor readings
+  value[0] = rotate1/4;
+  value[1] = rotate2/4;
+  value[2] = rotate3/16;
+  value[3] = rotate4/4;
+}
+
+void logging(){
   Serial.println(toggle1==HIGH);
   Serial.println(button1==HIGH);
   Serial.println(button2==HIGH);
@@ -56,23 +78,12 @@ void printsensors(){
   Serial.println(rotate2);
   Serial.println(rotate3);
   Serial.println(rotate4);
+  Serial.println(button1_on);
+  Serial.println(program);
+  Serial.println("");
 }
 
-void loop()
-{
-  // Box stuff
-  read();
-  hue = rotate1/4;
-  decay = rotate2/4;
-  delayval = rotate3/16;
-  brightness = rotate4/4;
-
-  // Radio stuff
-  value[0] = hue;
-  value[1] = decay;
-  value[2] = delayval;
-  value[3] = brightness;  
-  
+void send_values(){
   Mirf.setTADDR((byte *)"slave1");
   Mirf.config();
   Mirf.send(value);                
@@ -86,7 +97,16 @@ void loop()
   Mirf.setTADDR((byte *)"slave3");
   Mirf.config();
   Mirf.send(value);
-  while (Mirf.isSending()) delay(1);
+  while (Mirf.isSending()) delay(1); 
+}
 
-  delay(1000);
+void loop()
+{
+  // Box stuff
+  read_sensors();
+  calc();
+  //logging();
+  if (toggle1==HIGH){
+    send_values();
+  };
 }
