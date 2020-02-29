@@ -2,7 +2,6 @@
 #include "nRF24L01.h"
 Nrf24l Mirf = Nrf24l(10, 9);
 byte value[4];
-char names[2] = "12";
 
 // Box stuff
 uint8_t hue, decay, delayval, brightness;
@@ -75,16 +74,19 @@ void loop()
   value[3] = brightness;  
   
   Mirf.setTADDR((byte *)"slave1");
-  Mirf.config();        
+  Mirf.config();
   Mirf.send(value);                
-  while (Mirf.isSending())
-  delay(1);
+  while (Mirf.isSending()) delay(1);
 
   Mirf.setTADDR((byte *)"slave2");
-  Mirf.config();        
+  Mirf.config();
   Mirf.send(value);
-  while (Mirf.isSending())
-  delay(1);
+  while (Mirf.isSending()) delay(1);
+
+  Mirf.setTADDR((byte *)"slave3");
+  Mirf.config();
+  Mirf.send(value);
+  while (Mirf.isSending()) delay(1);
 
   delay(1000);
 }

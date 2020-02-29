@@ -8,7 +8,7 @@
 // Radio stuff
 Nrf24l Mirf = Nrf24l(10, 9);
 uint8_t value[4];
-char address[] = "slave2";
+char address[] = "slave1";
 
 // LED Stuff
 #define NUM_LEDS 60 
