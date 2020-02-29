@@ -1,17 +1,17 @@
 //Radio Stuff
 #include "nRF24L01.h"
 Nrf24l Mirf = Nrf24l(10, 9);
-byte value[4];
+byte value[6];
 
 // Button stuff
 const int N_PROGRAMS = 2;
 const int PIN_TOGGLE1 = 2;
 const int PIN_BUTTON1 = 3;
 const int PIN_BUTTON2 = 4;
-const int PIN_ROTATE1 = 0;
-const int PIN_ROTATE2 = 1;
-const int PIN_ROTATE3 = 2;
-const int PIN_ROTATE4 = 3;
+const int PIN_ROTATE1 = 3;
+const int PIN_ROTATE2 = 2;
+const int PIN_ROTATE3 = 1;
+const int PIN_ROTATE4 = 0;
 
 int toggle1 = 0;
 int button1 = 0;
@@ -30,7 +30,7 @@ void setup()
   // Radio stuff
   Mirf.spi = &MirfHardwareSpi;
   Mirf.init();
-  Mirf.setTADDR((byte *)"slave3");
+  Mirf.setTADDR((byte *)"slave1");
   Mirf.payload = sizeof(value);
   Mirf.channel = 90;
   Mirf.config();
@@ -64,40 +64,37 @@ void calc(){
   };
 
   // Normalize sensor readings
-  value[0] = rotate1/4;
-  value[1] = rotate2/4;
-  value[2] = rotate3/16;
-  value[3] = rotate4/4;
+  value[0] = program;
+  value[1] = button2;
+  value[2] = rotate1/4;
+  value[3] = rotate2/4;
+  value[4] = rotate3/4;
+  value[5] = rotate4/4;
 }
 
 void logging(){
+  Serial.print("Toggle 1: ");
   Serial.println(toggle1==HIGH);
+  Serial.print("Button 1: ");
   Serial.println(button1==HIGH);
+  Serial.print("Button 2: ");
   Serial.println(button2==HIGH);
+  Serial.print("Rotate 1: ");
   Serial.println(rotate1);
+  Serial.print("Rotate 2: ");
   Serial.println(rotate2);
+  Serial.print("Rotate 3: ");
   Serial.println(rotate3);
+  Serial.print("Rotate 4: ");
   Serial.println(rotate4);
-  Serial.println(button1_on);
+  Serial.print("Program: ");
   Serial.println(program);
-  Serial.println("");
+  Serial.println(" ");
 }
 
 void send_values(){
-  Mirf.setTADDR((byte *)"slave1");
-  Mirf.config();
   Mirf.send(value);                
   while (Mirf.isSending()) delay(1);
-
-  Mirf.setTADDR((byte *)"slave2");
-  Mirf.config();
-  Mirf.send(value);
-  while (Mirf.isSending()) delay(1);
-
-  Mirf.setTADDR((byte *)"slave3");
-  Mirf.config();
-  Mirf.send(value);
-  while (Mirf.isSending()) delay(1); 
 }
 
 void loop()
