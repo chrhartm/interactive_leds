@@ -3,8 +3,8 @@
 Nrf24l Mirf = Nrf24l(10, 9);
 byte value[6];
 
+const int N_PROGRAMS = 4;
 // Button stuff
-const int N_PROGRAMS = 2;
 const int PIN_TOGGLE1 = 2;
 const int PIN_BUTTON1 = 3;
 const int PIN_BUTTON2 = 4;
@@ -102,6 +102,7 @@ void loop()
   // Box stuff
   read_sensors();
   calc();
+  
   //logging();
   if (toggle1==HIGH){
     send_values();
