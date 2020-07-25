@@ -20,7 +20,7 @@ CRGB leds[NUM_LEDS];
 // Global states
 bool button2_on=0;
 int program=0;
-static int N_PROGRAMS=4;
+static int N_PROGRAMS=5;
 bool logging=0;
 
 // Program states
@@ -189,6 +189,16 @@ void step_2(){
   delay(value[3]/4);  
 }
 
+void step_3(){
+
+  delay(value[3]/4);
+}
+
+void step_4(){
+
+  delay(value[3]/4);
+}
+
 void clean_data(){
   if (value_raw[6] != (value_raw[0]+value_raw[1]+value_raw[2]+value_raw[3]+value_raw[4]+value_raw[5])%255){
     return;
@@ -238,7 +248,10 @@ void loop() {
       step_2();
       break;
     case 3:
-      step_0();
+      step_3();
+      break;
+    case 4:
+      step_4();
       break;
   }
   FastLED.show(); 
