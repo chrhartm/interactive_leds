@@ -8,6 +8,7 @@
 // Radio stuff
 Nrf24l Mirf = Nrf24l(10, 9);
 uint8_t value[6];
+uint8_t value_raw[7];
 char address[] = "slave1";
 
 // LED Stuff
@@ -39,7 +40,7 @@ void setup()
   Mirf.spi = &MirfHardwareSpi;
   Mirf.init();
   Mirf.setRADDR((byte *)address); //Set your own address (receiver address) using 5 characters
-  Mirf.payload = sizeof(value);
+  Mirf.payload = sizeof(value_raw);
   Mirf.channel = 90;             //Set the used channel
   Mirf.config();
 
@@ -52,6 +53,7 @@ void setup()
   value[3] = 253;
   value[4] = 253;
   value[5] = 0;
+  value[6] = 0;
 }
 
 void logger(){
@@ -188,6 +190,14 @@ void step_2(){
 }
 
 void clean_data(){
+  if (value_raw[6] != (value_raw[0]+value_raw[1]+value_raw[2]+value_raw[3]+value_raw[4]+value_raw[5])%255){
+    return;
+  };
+
+  for (int i=0; i<6; i++){
+    value[i] = value_raw[i];
+  }
+
   if(value[0]>=N_PROGRAMS){
     value[0]=program;
   };
@@ -202,7 +212,7 @@ static inline int8_t sgn(int val) {
 void loop() {
   // Radio Stuff
   while (Mirf.dataReady()) { //When the program is received, the received data is output from the serial port
-    Mirf.getData(value);
+    Mirf.getData(value_raw);
   }
 
   if(logging){
@@ -211,7 +221,7 @@ void loop() {
 
   clean_data();
 
-  if(value[0]!=program){
+  if(value[0]!= program){
     reset_states();
     program=value[0];
   }

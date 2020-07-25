@@ -1,7 +1,7 @@
 //Radio Stuff
 #include "nRF24L01.h"
 Nrf24l Mirf = Nrf24l(10, 9);
-byte value[6];
+byte value[7];
 
 const int N_PROGRAMS = 4;
 // Button stuff
@@ -137,12 +137,13 @@ void logging(){
   Serial.println(value[4]);
   Serial.print("Value 5: ");
   Serial.println(value[5]);
-  Serial.print("Sign 0: ");
-  Serial.println(sign[0]);
+  Serial.print("Value 6: ");
+  Serial.println(value[6]);
   Serial.println(" ");
 }
 
 void send_values(){
+  value[6] = (value[0]+value[1]+value[2]+value[3]+value[4]+value[5])%255;
   Mirf.send(value);
   while (Mirf.isSending()) delay(1);
 }
@@ -151,6 +152,6 @@ void loop()
 {
   read_sensors();
   calc();
-  //logging();
   send_values();
+  //logging();
 }
