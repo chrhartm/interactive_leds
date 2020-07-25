@@ -11,7 +11,7 @@ uint8_t value[6];
 char address[] = "slave1";
 
 // LED Stuff
-#define NUM_LEDS 60 
+#define NUM_LEDS 120
 #define DATA_PIN 6
 #define CLOCK_PIN 13
 CRGB leds[NUM_LEDS];
