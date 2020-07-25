@@ -20,7 +20,7 @@ CRGB leds[NUM_LEDS];
 // Global states
 bool button2_on=0;
 int program=0;
-static int N_PROGRAMS=5;
+static int N_PROGRAMS=6;
 bool logging=0;
 
 // Program states
