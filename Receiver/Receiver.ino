@@ -26,6 +26,7 @@ bool logging=0;
 // Program states
 int ix=0;
 bool state=0;
+bool button_state=0;
 int state2=0;
 const int n_states = 10;
 int states[n_states];
@@ -72,6 +73,7 @@ void reset_states(){
   ix = 0;
   state = 0;
   state2 = 1;
+  button_state=0;
   for(int i=0; i<n_states; i=i+2){
     states[i] = random(NUM_LEDS-1);
     states[i+1] = NUM_LEDS-1-states[i];
@@ -80,14 +82,13 @@ void reset_states(){
   }
 }
 
-void step_0(){
-    // Calculate Up or Down
+void calc_button2_on(){
   if (value[1]==1){
     if (button2_on==0){
-      if (state==0){
-        state = 1;
+      if (button_state==0){
+        button_state = 1;
       } else {
-        state = 0;
+        button_state = 0;
       };
       button2_on = 1;
     };
@@ -95,6 +96,12 @@ void step_0(){
   else{
     button2_on = 0;
   };
+}
+
+void step_0(){
+  // Calculate Up or Down
+  calc_button2_on();
+  state = button_state;
   
   // Update index
   if(state==0){
@@ -190,12 +197,41 @@ void step_2(){
 }
 
 void step_3(){
-
+  calc_button2_on();
+  fadeall(value[4]);
+  leds[ix] = CHSV(value[2], 255, 255);
   delay(value[3]/4);
 }
 
 void step_4(){
-
+  calc_button2_on();
+  if (!button_state){
+    fadeall(100);
+  };
+  for (int i=0; i<NUM_LEDS/2; i++){
+    // Starting from center in both directions
+    if (i < ix){
+      leds[NUM_LEDS/2 + i] = CHSV(value[2], 255, 255);
+      leds[NUM_LEDS/2 - i] = CHSV(value[2], 255, 255);
+    } else{
+      if (button_state){
+        leds[NUM_LEDS/2 + i] = CHSV(value[5], 255, 100);
+        leds[NUM_LEDS/2 - i] = CHSV(value[5], 255, 100);
+      };
+    };
+  }
+  if (ix>int(float(value[4])/255.0 * float(NUM_LEDS/2))){
+    state = 0;
+  }
+  if (ix == 0){
+    state = 1;
+  };
+  if (state){
+    ix = ix+1;
+  }
+  else{
+    ix = ix-1;
+  };
   delay(value[3]/4);
 }
 
@@ -248,10 +284,10 @@ void loop() {
       step_2();
       break;
     case 3:
-      step_3();
+      step_4();
       break;
     case 4:
-      step_4();
+      step_3();
       break;
   }
   FastLED.show(); 
