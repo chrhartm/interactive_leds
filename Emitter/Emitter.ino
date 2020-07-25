@@ -13,6 +13,11 @@ const int PIN_ROTATE2 = 2;
 const int PIN_ROTATE3 = 1;
 const int PIN_ROTATE4 = 0;
 
+// faster if slower
+const int change_speed = 2000;
+// faster is faster
+const int change_const = 1;
+
 int toggle1 = 0;
 int button1 = 0;
 int button2 = 0;
@@ -23,6 +28,7 @@ int rotate4 = 0;
 
 int program = 0;
 bool button1_on = 0;
+int sign[4];
 
 void setup()
 {
@@ -39,6 +45,11 @@ void setup()
   pinMode(PIN_TOGGLE1, INPUT);
   pinMode(PIN_BUTTON1, INPUT);
   pinMode(PIN_BUTTON2, INPUT);
+
+  sign[0] = change_const;
+  sign[1] = change_const;
+  sign[2] = change_const;
+  sign[3] = change_const;
 }
 
 void read_sensors(){
@@ -63,13 +74,42 @@ void calc(){
     button1_on = 0;
   };
 
-  // Normalize sensor readings
   value[0] = program;
   value[1] = button2;
-  value[2] = rotate1/4;
-  value[3] = rotate2/4;
-  value[4] = rotate3/4;
-  value[5] = rotate4/4;
+
+  if (toggle1==HIGH){
+    // Normalize sensor readings
+    value[2] = rotate1/4;
+    value[3] = rotate2/4;
+    value[4] = rotate3/4;
+    value[5] = rotate4/4;
+  } else {
+    // Change faster if rotate higher
+    if ((random(change_speed) - rotate1) < 0){
+      value[2] = (value[2] + sign[0])%255;
+      if (value[2] + sign[0] > 254 || value[2] + sign[0] <1){
+        sign[0] = sign[0] * (-1);
+      };
+    };
+    if ((random(change_speed) - rotate2) < 0){
+      value[3] = (value[3] + sign[1])%255;
+      if (value[3] + sign[1] > 254 || value[3] + sign[1] <1){
+        sign[1] = sign[1] * (-1);
+      };
+    };
+    if ((random(change_speed) - rotate3) < 0){
+      value[4] = (value[4] + sign[2])%255;
+      if (value[4] + sign[2] > 254 || value[4] + sign[2] <1){
+        sign[2] = sign[2] * (-1);
+      };
+    };
+    if ((random(change_speed) - rotate4) < 0){
+      value[5] = (value[5] + sign[3])%255;
+      if (value[5] + sign[3] > 254 || value[5] + sign[3] <1){
+        sign[3] = sign[3] * (-1);
+      };
+    };
+  };
 }
 
 void logging(){
@@ -89,22 +129,28 @@ void logging(){
   Serial.println(rotate4);
   Serial.print("Program: ");
   Serial.println(program);
+  Serial.print("Value 2: ");
+  Serial.println(value[2]);
+  Serial.print("Value 3: ");
+  Serial.println(value[3]);
+  Serial.print("Value 4: ");
+  Serial.println(value[4]);
+  Serial.print("Value 5: ");
+  Serial.println(value[5]);
+  Serial.print("Sign 0: ");
+  Serial.println(sign[0]);
   Serial.println(" ");
 }
 
 void send_values(){
-  Mirf.send(value);                
+  Mirf.send(value);
   while (Mirf.isSending()) delay(1);
 }
 
 void loop()
 {
-  // Box stuff
   read_sensors();
   calc();
-  
   //logging();
-  if (toggle1==HIGH){
-    send_values();
-  };
+  send_values();
 }
