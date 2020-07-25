@@ -3,7 +3,7 @@
 Nrf24l Mirf = Nrf24l(10, 9);
 byte value[7];
 
-const int N_PROGRAMS = 5;
+const int N_PROGRAMS = 6;
 // Button stuff
 const int PIN_TOGGLE1 = 2;
 const int PIN_BUTTON1 = 3;
