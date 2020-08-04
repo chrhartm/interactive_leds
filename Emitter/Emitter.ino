@@ -8,6 +8,7 @@ const int N_PROGRAMS = 6;
 const int PIN_TOGGLE1 = 2;
 const int PIN_BUTTON1 = 3;
 const int PIN_BUTTON2 = 4;
+const int PIN_TOGGLE2 = 5;
 const int PIN_ROTATE1 = 3;
 const int PIN_ROTATE2 = 2;
 const int PIN_ROTATE3 = 1;
@@ -21,6 +22,7 @@ const int change_const = 1;
 int toggle1 = 0;
 int button1 = 0;
 int button2 = 0;
+int toggle2 = 0;
 int rotate1 = 0;
 int rotate2 = 0;
 int rotate3 = 0;
@@ -45,6 +47,7 @@ void setup()
   pinMode(PIN_TOGGLE1, INPUT);
   pinMode(PIN_BUTTON1, INPUT);
   pinMode(PIN_BUTTON2, INPUT);
+  pinMode(PIN_TOGGLE2, INPUT);
 
   sign[0] = change_const;
   sign[1] = change_const;
@@ -56,6 +59,7 @@ void read_sensors(){
   toggle1 = digitalRead(PIN_TOGGLE1);
   button1 = digitalRead(PIN_BUTTON1);
   button2 = digitalRead(PIN_BUTTON2);
+  toggle2 = digitalRead(PIN_TOGGLE2);
   rotate1 = 1023-analogRead(PIN_ROTATE1);
   rotate2 = 1023-analogRead(PIN_ROTATE2);
   rotate3 = 1023-analogRead(PIN_ROTATE3);
@@ -151,7 +155,11 @@ void send_values(){
 void loop()
 {
   read_sensors();
-  calc();
-  send_values();
-  //logging();
+  if (toggle2==HIGH){
+    calc();
+    send_values();
+    //logging();
+  } else {
+    delay(1000);
+  };
 }
