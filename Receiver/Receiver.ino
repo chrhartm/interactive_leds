@@ -132,23 +132,26 @@ void step_1(){
     state2 = value[5];
   } else{
     if(state==0){
-      ix = ix + (255-value[4])/(value[3]/2 + 1);
+      ix = ix + 5;
       if(ix>=255){
         ix = 255;
         state = 1;
       };
     } else {
-      ix = ix - (255-value[4])/(value[3]/2 + 1);
-      if(ix<=value[3]){
-        ix = value[3];
+      ix = ix - 5;
+      if(ix<=(-value[4]*5)){
+        ix = 0;
         state = 0;
       };
     };
     state2 = value[2];   
   };  
   for (int i=0; i<NUM_LEDS; i++){
-    leds[i] = CHSV(state2, 255, ix);
+    if(ix>0){
+      leds[i] = CHSV(state2, 255, ix);
+    };
   }
+  delay(value[3]/20);
 };
 
 void step_2(){
@@ -235,18 +238,19 @@ void step_3(){
 
 void step_4(){
   calc_button2_on();
-  if (!button_state){
-    fadeall(100);
-  };
+  fadeall(100);
   for (int i=0; i<NUM_LEDS/2; i++){
+    int col = (value[2]+((value[5]*i)/(NUM_LEDS/2)))%255;
     // Starting from center in both directions
     if (i < ix){
-      leds[NUM_LEDS/2 + i] = CHSV(value[2], 255, 255);
-      leds[NUM_LEDS/2 - i] = CHSV(value[2], 255, 255);
+      if (!button_state){
+        leds[NUM_LEDS/2 + i] = CHSV(col, 255, 255);
+        leds[NUM_LEDS/2 - i] = CHSV(col, 255, 255);
+      };
     } else{
       if (button_state){
-        leds[NUM_LEDS/2 + i] = CHSV(value[5], 255, 150);
-        leds[NUM_LEDS/2 - i] = CHSV(value[5], 255, 150);
+        leds[NUM_LEDS/2 + i] = CHSV(col, 255, 255);
+        leds[NUM_LEDS/2 - i] = CHSV(col, 255, 255);
       };
     };
   }
