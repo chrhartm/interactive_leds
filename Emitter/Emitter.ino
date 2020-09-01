@@ -13,6 +13,7 @@ const int PIN_ROTATE1 = 3;
 const int PIN_ROTATE2 = 2;
 const int PIN_ROTATE3 = 1;
 const int PIN_ROTATE4 = 0;
+const int PIN_RESET = 7;
 
 // faster if slower
 const int change_speed = 2000;
@@ -30,11 +31,13 @@ int rotate4 = 0;
 
 int program = 0;
 bool button1_on = 0;
+bool toggle2_on = 0;
 int sign[4];
 
 void setup()
 {
   Serial.begin(9600);
+  Serial.println("setup");
   // Radio stuff
   Mirf.spi = &MirfHardwareSpi;
   Mirf.init();
@@ -53,6 +56,9 @@ void setup()
   sign[1] = change_const;
   sign[2] = change_const;
   sign[3] = change_const;
+
+  digitalWrite(PIN_RESET, HIGH);
+  pinMode(PIN_RESET, OUTPUT);
 }
 
 void read_sensors(){
@@ -156,10 +162,14 @@ void loop()
 {
   read_sensors();
   if (toggle2==HIGH){
+    toggle2_on = 1;
     calc();
     send_values();
     //logging();
   } else {
+    if(toggle2_on){
+      digitalWrite(PIN_RESET, LOW);
+    };
     delay(1000);
   };
 }
