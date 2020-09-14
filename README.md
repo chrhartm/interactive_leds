@@ -11,8 +11,10 @@ Remote-control LED strips from a button box
 
 ## Circuit diagrams
 
-![Emitter circuit diagram](relative/emitter.png?raw=true "Emitter")
+### Emitter
+![Emitter circuit diagram](Docs/emitter.png?raw=true "Emitter")
 
+### Receiver
 ![Receiver circuit diagram](Docs/receiver.png?raw=true "Receiver")
 
 ## Configs
