@@ -1,15 +1,16 @@
 //Radio Stuff
 #include <SPI.h>
 #include "nRF24L01.h"
+#include "RF24.h"
 
 // LED Stuff
 #include <FastLED.h>
 
 // Radio stuff
-Nrf24l Mirf = Nrf24l(10, 9);
+RF24 radio(10,9);
 uint8_t value[6];
 uint8_t value_raw[7];
-char address[] = "slave1";
+const uint64_t pipe = 0xF0F0F0F0E1LL;
 
 // LED Stuff
 #define NUM_LEDS 120
@@ -20,7 +21,7 @@ CRGB leds[NUM_LEDS];
 // Global states
 bool button2_on=0;
 int program=0;
-static int N_PROGRAMS=6;
+static int N_PROGRAMS=7;
 bool logging=0;
 
 // Program states
@@ -42,12 +43,14 @@ void setup()
   reset_states();
 
   // Radio stuff
-  Mirf.spi = &MirfHardwareSpi;
-  Mirf.init();
-  Mirf.setRADDR((byte *)address); //Set your own address (receiver address) using 5 characters
-  Mirf.payload = sizeof(value_raw);
-  Mirf.channel = 90;             //Set the used channel
-  Mirf.config();
+  radio.begin();
+  radio.setRetries(0,0);
+  radio.disableCRC();
+  radio.setPayloadSize(7);
+  radio.setAutoAck(0);
+  radio.setChannel(90);
+  radio.openReadingPipe(1,pipe);
+  radio.startListening();
 
   // LED stuff
   LEDS.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
@@ -62,12 +65,10 @@ void setup()
 }
 
 void logger(){
-  Serial.print("State: ");
-  Serial.println(state);
-  Serial.print("button2_on: ");
-  Serial.println(button2_on);
-  Serial.print("value[4]: ");
-  Serial.println(value[4]/4);
+  Serial.println(value_raw[0]);
+  Serial.println(value_raw[1]);
+  Serial.println(value_raw[2]);
+  Serial.println(' ');
 }
 
 // LED stuff
@@ -307,6 +308,21 @@ void step_5(){
   delay(value[3]/4);
 }
 
+void step_6(){
+  for (int i=0; i<NUM_LEDS; i++){
+    int col = value[1];
+    if (value[2] == 1){
+      leds[i] = CHSV(col, 255, 255);
+    }
+    else {
+      leds[i] = CHSV(col, 255, 100);
+    };
+
+  }
+  fadeall(value[4]);
+  delay(value[4]/4);
+}
+
 void clean_data(){
   if (value_raw[6] != (value_raw[0]+value_raw[1]+value_raw[2]+value_raw[3]+value_raw[4]+value_raw[5])%255){
     return;
@@ -329,8 +345,8 @@ static inline int8_t sgn(int val) {
 
 void loop() {
   // Radio Stuff
-  while (Mirf.dataReady()) { //When the program is received, the received data is output from the serial port
-    Mirf.getData(value_raw);
+  while (radio.available()) {
+    radio.read(value_raw, 7);
   }
 
   if(logging){
@@ -363,6 +379,9 @@ void loop() {
       break;
     case 5:
       step_5();
+      break;
+    case 6:
+      step_6();
       break;
   }
   FastLED.show(); 

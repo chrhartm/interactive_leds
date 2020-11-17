@@ -1,6 +1,10 @@
 //Radio Stuff
 #include "nRF24L01.h"
-Nrf24l Mirf = Nrf24l(10, 9);
+#include "RF24.h"
+
+RF24 radio(10,9);
+const uint64_t pipe = 0xF0F0F0F0E1LL;
+
 byte value[7];
 
 const int N_PROGRAMS = 6;
@@ -39,12 +43,14 @@ void setup()
   Serial.begin(9600);
   Serial.println("setup");
   // Radio stuff
-  Mirf.spi = &MirfHardwareSpi;
-  Mirf.init();
-  Mirf.setTADDR((byte *)"slave1");
-  Mirf.payload = sizeof(value);
-  Mirf.channel = 90;
-  Mirf.config();
+  radio.begin();
+  radio.setRetries(0,0);
+  radio.disableCRC();
+  radio.setPayloadSize(7);
+  radio.setAutoAck(0);
+  radio.setChannel(90);
+  radio.openWritingPipe(pipe);
+  radio.stopListening();
 
   // Button stuff
   pinMode(PIN_TOGGLE1, INPUT);
@@ -154,8 +160,7 @@ void logging(){
 
 void send_values(){
   value[6] = (value[0]+value[1]+value[2]+value[3]+value[4]+value[5])%255;
-  Mirf.send(value);
-  while (Mirf.isSending()) delay(1);
+  radio.write(&value, 7);
 }
 
 void loop()
