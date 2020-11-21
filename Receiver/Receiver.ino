@@ -6,10 +6,15 @@
 // LED Stuff
 #include <FastLED.h>
 
+#define NUM_ENERGIES 20
+
 // Radio stuff
 RF24 radio(10,9);
 uint8_t value[6];
+uint8_t value_long[NUM_ENERGIES];
 uint8_t value_raw[7];
+uint8_t value_raw_long[NUM_ENERGIES+7];
+uint8_t value_garbage[32];
 const uint64_t pipe = 0xF0F0F0F0E1LL;
 
 // LED Stuff
@@ -21,7 +26,7 @@ CRGB leds[NUM_LEDS];
 // Global states
 bool button2_on=0;
 int program=0;
-static int N_PROGRAMS=7;
+static int N_PROGRAMS=10;
 bool logging=0;
 
 // Program states
@@ -36,6 +41,8 @@ int states[n_states];
 int states2[n_states];
 bool bool_states[n_states];
 const int change_const = 2;
+CRGB tmpled_1;
+CRGB tmpled_2;
 
 void setup()
 {
@@ -46,7 +53,7 @@ void setup()
   radio.begin();
   radio.setRetries(0,0);
   radio.disableCRC();
-  radio.setPayloadSize(7);
+  radio.enableDynamicPayloads();
   radio.setAutoAck(0);
   radio.setChannel(90);
   radio.openReadingPipe(1,pipe);
@@ -309,18 +316,82 @@ void step_5(){
 }
 
 void step_6(){
-  for (int i=0; i<NUM_LEDS; i++){
-    int col = value[1];
-    if (value[2] == 1){
-      leds[i] = CHSV(col, 255, 255);
-    }
-    else {
-      leds[i] = CHSV(col, 255, 100);
-    };
-
+  int sum = 0;
+  for (int i=0; i<NUM_ENERGIES; i++){
+    sum += value_long[i];
   }
-  fadeall(value[4]);
-  delay(value[4]/4);
+  sum = sum/NUM_ENERGIES;
+  if (sum > value[4]){
+    state2 = 255;
+    ix = value[1];
+  }
+  else if (state2 > 5){
+    state2 = state2-5;
+  }
+  else {
+  };
+  for (int i=0; i<NUM_LEDS; i++){
+    leds[i] = CHSV(ix, 255, state2);
+  }
+  delay(value[3]/4);
+}
+
+void step_7(){
+  tmpled_1 = leds[0];
+  int sum_low = 0;
+  int sum_med = 0;
+  int sum_high = 0;
+  for(int i=0; i<NUM_ENERGIES/3; i++){
+    sum_low = sum_low + value_long[i];
+    sum_med = sum_med + value_long[i+NUM_ENERGIES/3];
+    sum_high = sum_high + value_long[i+2*NUM_ENERGIES/3];
+  }
+  sum_low = sum_low / (NUM_ENERGIES/3);
+  sum_med = sum_med / (NUM_ENERGIES/3);
+  sum_high = sum_high / (NUM_ENERGIES/3);
+  for (int i=0; i<NUM_LEDS-1; i++){
+    tmpled_2 = leds[i+1];
+    leds[i+1] = tmpled_1;
+    tmpled_1 = tmpled_2;
+  }
+  if (sum_low + sum_med + sum_high > value[4]*3){
+    leds[4] = CHSV(sum_med, sum_high, sum_low);
+    leds[3] = CHSV(sum_med, sum_high, int(sum_low*0.8));
+    leds[2] = CHSV(sum_med, sum_high, int(sum_low*0.6));
+    leds[1] = CHSV(sum_med, sum_high, int(sum_low*0.4));
+    leds[0] = CHSV(sum_med, sum_high, int(sum_low*0.2));
+  }
+  else{
+    leds[0] = CHSV(0, 0, 0);
+  }
+  delay(value[3]/4);
+}
+
+void step_8(){
+  int col = value[2];
+  for (int i=0; i<NUM_ENERGIES; i++){
+    for(int j=0; j<NUM_LEDS/NUM_ENERGIES; j++){
+      leds[i*(NUM_LEDS/NUM_ENERGIES)+j] = CHSV(col, 255, value_long[i]);
+    }
+  }
+  delay(value[3]/4);
+}
+
+void step_9(){
+  int sum = 0;
+  for (int i=0; i<NUM_ENERGIES; i++){
+    sum += value_long[i];
+  }
+  sum = sum/NUM_ENERGIES;
+  int col = value[2];
+  int brightness = min(sum + value[4],255);
+  int delta = min(value[5]/5+5,50);
+  int pos = int(float(value[1]+1)/float(256)*delta);
+  for (int i=0; i<NUM_LEDS; i=i+delta){
+    leds[i+pos] = CHSV(col, 255, brightness);
+  }
+  fadeall(2000);
+  delay(value[3]/4);
 }
 
 void clean_data(){
@@ -345,9 +416,24 @@ static inline int8_t sgn(int val) {
 
 void loop() {
   // Radio Stuff
-  while (radio.available()) {
-    radio.read(value_raw, 7);
-  }
+  if (radio.available()) {
+    uint8_t len = radio.getDynamicPayloadSize();
+    if(len==7){
+      radio.read(value_raw, len);
+    }
+    else if(len==(NUM_ENERGIES+7)){
+      radio.read(value_raw_long, len);
+      for(int i=0; i<7; i++){
+        value_raw[i] = value_raw_long[i];
+      }
+      for(int i=0; i<NUM_ENERGIES; i++){
+        value_long[i] = value_raw_long[i+7];
+      }
+    }
+    else{
+      radio.read(value_garbage,len);
+    };
+  };
 
   if(logging){
     logger();
@@ -382,6 +468,15 @@ void loop() {
       break;
     case 6:
       step_6();
+      break;
+    case 7:
+      step_7();
+      break;
+    case 8:
+      step_8();
+      break;
+    case 9:
+      step_9();
       break;
   }
   FastLED.show(); 

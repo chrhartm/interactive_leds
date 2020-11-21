@@ -46,7 +46,7 @@ void setup()
   radio.begin();
   radio.setRetries(0,0);
   radio.disableCRC();
-  radio.setPayloadSize(7);
+  radio.enableDynamicPayloads();
   radio.setAutoAck(0);
   radio.setChannel(90);
   radio.openWritingPipe(pipe);
