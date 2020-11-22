@@ -1,12 +1,15 @@
 # Interactive Leds
 
-Remote-control LED strips from a button box
+Remote-control LED strips
+- From a button box (Arduino)
+- Based on live music (Raspberry Pi)
 
 [Sample images](https://photos.app.goo.gl/HkHUnnAh49a3waEM7)
 
 ## Components
 
-- Emitter: Arduino Nano V3.0 + separate wireless transceiver module 2.4G 1100m NRF24L01+PA+LNA
+- Emitter (Arduino): Arduino Nano V3.0 + separate wireless transceiver module 2.4G 1100m NRF24L01+PA+LNA
+- Emitter (Raspberry Pi): Raspberry Pi 3b + USB sound card + USB gamepad + NRF24L01
 - Receiver: Keywish RF-Nano for Arduino Nano V3.0, Micro USB Nano Board ATmega328P QFN32 5V 16M CH340, Integrate NRF24l01+2.4G wireless
 - LED strips: WS2812B Smart pixel led strip 2m, 60LED/m, IP67
 
