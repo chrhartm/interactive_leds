@@ -11,9 +11,9 @@
 // Radio stuff
 RF24 radio(10,9);
 uint8_t value[6];
-uint8_t value_long[NUM_ENERGIES];
+uint8_t value_long[NUM_ENERGIES+1];
 uint8_t value_raw[7];
-uint8_t value_raw_long[NUM_ENERGIES+7];
+uint8_t value_raw_long[NUM_ENERGIES+7+1];
 uint8_t value_garbage[32];
 const uint64_t pipe = 0xF0F0F0F0E1LL;
 
@@ -41,8 +41,6 @@ int states[n_states];
 int states2[n_states];
 bool bool_states[n_states];
 const int change_const = 2;
-CRGB tmpled_1;
-CRGB tmpled_2;
 
 void setup()
 {
@@ -120,7 +118,6 @@ void step_0(){
     ix = (ix+1)%NUM_LEDS;
   } else {
     ix = (ix-1)%NUM_LEDS;
-    // BUG something funny happening to state after this step
     if(ix<=0){
       ix = NUM_LEDS;
     };
@@ -311,7 +308,6 @@ void step_5(){
     leds[states[i]] = CHSV(states2[i], 255, 255);
   }
   fadeall(value[4]);
-
   delay(value[3]/4);
 }
 
@@ -321,9 +317,9 @@ void step_6(){
     sum += value_long[i];
   }
   sum = sum/NUM_ENERGIES;
-  if (sum > value[4]){
+  if ((sum > value[4])||value[1]){
     state2 = 255;
-    ix = value[1];
+    ix = (int(value_long[NUM_ENERGIES]*(float(value[5])/255)) + value[2])%255;
   }
   else if (state2 > 5){
     state2 = state2-5;
@@ -337,7 +333,8 @@ void step_6(){
 }
 
 void step_7(){
-  tmpled_1 = leds[0];
+  calc_button2_on();
+
   int sum_low = 0;
   int sum_med = 0;
   int sum_high = 0;
@@ -349,31 +346,60 @@ void step_7(){
   sum_low = sum_low / (NUM_ENERGIES/3);
   sum_med = sum_med / (NUM_ENERGIES/3);
   sum_high = sum_high / (NUM_ENERGIES/3);
+
   for (int i=0; i<NUM_LEDS-1; i++){
-    tmpled_2 = leds[i+1];
-    leds[i+1] = tmpled_1;
-    tmpled_1 = tmpled_2;
+    if(button_state){
+      leds[i] = leds[i+1];  
+    }
+    else{
+      leds[NUM_LEDS-1-i] = leds[NUM_LEDS-2-i];
+    };
   }
+  int saturation = 255-value[5];
   if (sum_low + sum_med + sum_high > value[4]*3){
-    leds[4] = CHSV(sum_med, sum_high, sum_low);
-    leds[3] = CHSV(sum_med, sum_high, int(sum_low*0.8));
-    leds[2] = CHSV(sum_med, sum_high, int(sum_low*0.6));
-    leds[1] = CHSV(sum_med, sum_high, int(sum_low*0.4));
-    leds[0] = CHSV(sum_med, sum_high, int(sum_low*0.2));
+    if(button_state){
+      leds[NUM_LEDS-5] = CHSV((sum_med+value[2])%255, saturation, sum_low);
+      leds[NUM_LEDS-4] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.8));
+      leds[NUM_LEDS-3] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.6));
+      leds[NUM_LEDS-2] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.4));
+      leds[NUM_LEDS-1] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.2));
+    }
+    else{
+      leds[4] = CHSV((sum_med+value[2])%255, saturation, sum_low);
+      leds[3] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.8));
+      leds[2] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.6));
+      leds[1] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.4));
+      leds[0] = CHSV((sum_med+value[2])%255, saturation, int(sum_low*0.2));
+    };
   }
   else{
-    leds[0] = CHSV(0, 0, 0);
+    if(button_state){
+      leds[NUM_LEDS-1] = CHSV(0, 0, 0);
+    }
+    else
+    {
+      leds[0] = CHSV(0, 0, 0);
+    }
   }
   delay(value[3]/4);
 }
 
 void step_8(){
-  int col = value[2];
+  calc_button2_on();
+
   for (int i=0; i<NUM_ENERGIES; i++){
+    int col = (value[2] + value[5]/30*i)%255;
+    int saturation = 255;
+    if(button_state){
+      saturation = 255 - 255/NUM_ENERGIES * i;
+    };
     for(int j=0; j<NUM_LEDS/NUM_ENERGIES; j++){
-      leds[i*(NUM_LEDS/NUM_ENERGIES)+j] = CHSV(col, 255, value_long[i]);
+      if (value_long[i]>value[4]){
+        leds[i*(NUM_LEDS/NUM_ENERGIES)+j] = CHSV(col, saturation, value_long[i]);
+      };
     }
   }
+  fadeall(value[3]);
   delay(value[3]/4);
 }
 
@@ -383,14 +409,19 @@ void step_9(){
     sum += value_long[i];
   }
   sum = sum/NUM_ENERGIES;
-  int col = value[2];
-  int brightness = min(sum + value[4],255);
-  int delta = min(value[5]/5+5,50);
-  int pos = int(float(value[1]+1)/float(256)*delta);
-  for (int i=0; i<NUM_LEDS; i=i+delta){
-    leds[i+pos] = CHSV(col, 255, brightness);
+  int brightness = min(sum + 100,255);
+  int delta = min(value[4]/5+5,50);
+  int pos = int(float(value_long[NUM_ENERGIES]+1)/float(256)*delta);
+  for (int i=0; i<NUM_LEDS-delta; i=i+delta){
+    int col = (value[2] + value[5]/30*i)%255;
+    if(value[1]){
+      leds[i+pos] = CHSV(col+value[5], 0, brightness);
+    }
+    else{
+      leds[i+pos] = CHSV(col, 255, brightness);
+    }
   }
-  fadeall(2000);
+  fadeall(value[3]);
   delay(value[3]/4);
 }
 
@@ -421,12 +452,12 @@ void loop() {
     if(len==7){
       radio.read(value_raw, len);
     }
-    else if(len==(NUM_ENERGIES+7)){
+    else if(len==(NUM_ENERGIES+7+1)){
       radio.read(value_raw_long, len);
       for(int i=0; i<7; i++){
         value_raw[i] = value_raw_long[i];
       }
-      for(int i=0; i<NUM_ENERGIES; i++){
+      for(int i=0; i<NUM_ENERGIES+1; i++){
         value_long[i] = value_raw_long[i+7];
       }
     }
