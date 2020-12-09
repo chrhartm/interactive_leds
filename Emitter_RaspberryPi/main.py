@@ -13,7 +13,7 @@ program = program_start
 button_delta = 2
 # allowed sample rates 44100 32000 22050 16000
 # samplerate, win_s = 44100, 4096
-samplerate, win_s = 16000, 1024 * 4
+samplerate, win_s = 44100, 4096 * 4
 buffer_size = hop_s = win_s/4
 n_energies = 20 
 tolerance = 0.8 # pitch
