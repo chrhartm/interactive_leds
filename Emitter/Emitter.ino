@@ -38,11 +38,7 @@ bool button1_on = 0;
 bool toggle2_on = 0;
 int sign[4];
 
-void setup()
-{
-  Serial.begin(9600);
-  Serial.println("setup");
-  // Radio stuff
+void configureRadio(){
   radio.begin();
   radio.setRetries(0,0);
   radio.disableCRC();
@@ -51,6 +47,14 @@ void setup()
   radio.setChannel(90);
   radio.openWritingPipe(pipe);
   radio.stopListening();
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  Serial.println("setup");
+  // Radio stuff
+  configureRadio();
 
   // Button stuff
   pinMode(PIN_TOGGLE1, INPUT);
@@ -155,7 +159,15 @@ void logging(){
   Serial.println(value[5]);
   Serial.print("Value 6: ");
   Serial.println(value[6]);
+  Serial.print("Radio: ");
+  Serial.println(radio.failureDetected); // first 0 then 1 when issues
+  Serial.println(radio.txStandBy()); // first 1 then 0 when issues
   Serial.println(" ");
+}
+
+void logging_off(){
+  Serial.print("Toggle 2: ");
+  Serial.println(toggle2==HIGH);
 }
 
 void send_values(){
@@ -163,15 +175,26 @@ void send_values(){
   radio.write(&value, 7);
 }
 
+void check_radio(){
+    if (radio.failureDetected) {
+      radio.failureDetected = false;
+      delay(250);
+      Serial.println("Radio failure detected, restarting radio");
+      configureRadio();
+  }
+}
+
 void loop()
 {
+  check_radio();
   read_sensors();
   if (toggle2==HIGH){
     toggle2_on = 1;
     calc();
     send_values();
-    //logging();
+    // logging();
   } else {
+    // logging_off();
     if(toggle2_on){
       digitalWrite(PIN_RESET, LOW);
     };
