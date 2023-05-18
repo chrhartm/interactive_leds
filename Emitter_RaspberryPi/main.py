@@ -14,6 +14,8 @@ program_start = 0
 program_musical_start = 6
 program = program_start
 button_delta = 2
+joystick_timeout = 30 # in minutes?
+joystick_lastactive = time.time()
 # allowed sample rates 44100 32000 22050 16000
 # samplerate, win_s = 44100, 4096
 samplerate, win_s = 44100, 4096 * 4
@@ -35,16 +37,32 @@ radio = RF24(25, 0);
 
 def init_bluetooth():
     global bluetoothprocess
-    bluetoothprocess = subprocess.Popen(['bluetoothctl'], stdout = subprocess.PIPE)
+    bluetoothprocess = subprocess.Popen(['bluetoothctl'],
+                                        shell=False,
+                                        stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE)
+    time.sleep(0.02)
+    bluetoothprocess.stdin.write('agent on\n')
+    time.sleep(0.02)
+    bluetoothprocess.stdin.write('connect DB:F6:AB:36:77:85\n')
+    time.sleep(1)
+    bluetoothprocess.stdin.write('connect FF:6C:F2:BA:E9:AA\n')
+    time.sleep(1)
+    bluetoothprocess.stdin.write('exit\n')
+    print(bluetoothprocess.stdout.read())
 
 def init_joystick():
+    global joysticks, joystick_lastactive
     # Joystick setup
+    pygame.joystick.quit()
+    pygame.quit()
     pygame.init()
     pygame.joystick.init()
 
     for i in range(0, pygame.joystick.get_count()):
         joysticks.append(pygame.joystick.Joystick(i))
         joysticks[-1].init()
+        joystick_lastactive = time.time()
         print ("Detected joystick "),joysticks[-1].get_name(),"'"
 
 def init_radio():
@@ -128,6 +146,7 @@ def send_arduino(message):
 def process_input():
     global program, button_states, program_states
     for event in pygame.event.get():
+        joystick_lastactive = time.time()
         # print(event)
         if(event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP):
             if event.type == pygame.JOYBUTTONUP:
@@ -141,6 +160,7 @@ def process_input():
             elif event.button == 7:
                 program = 1
             elif event.button == 8:
+                pass
                 program = (program+1)%program_musical_start
             elif event.button == 9:
                 program = 2
@@ -223,40 +243,51 @@ def process_input():
         program_states[0] = 0
 
 def main_loop():
+    global joysticks, joystick_lastactive, joystick_timeout
+    
     while True:
-        try:
-            if(audio):
-                get_signal()
-            else:
-                time.sleep(0.02)
-            process_input()
-            message = [program, program_states[0], program_states[1],
-                        program_states[2], program_states[3], 
-                        program_states[4], 0]
-            if program >= program_musical_start:
-                for e in energies:
-                    message.append(e)
-                message.append(pitch)
-                         
-            send_arduino(message)
-            
-        except KeyboardInterrupt:
-            print("*** Ctrl+C pressed, exiting")
+        if(audio):
+            get_signal()
+        else:
+            time.sleep(0.02)
+        process_input()
+        message = [program, program_states[0], program_states[1],
+                    program_states[2], program_states[3], 
+                    program_states[4], 0]
+        if program >= program_musical_start:
+            for e in energies:
+                message.append(e)
+            message.append(pitch)
+                     
+        send_arduino(message)
+        
+        if (time.time() - joystick_lastactive > joystick_timeout):
+            joysticks = []
+            print("lost joystick")
             break
+            
 
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+    
 
 if (__name__ == '__main__'):
     init_bluetooth()
-    while len(joysticks) < 1:
-        init_joystick()
-        if len(joysticks)<1:
-            time.sleep(1)
-            pygame.joystick.quit()
     init_radio()
     init_audio()
     if (not audio):
         n_programs = program_musical_start
-    main_loop()
+    while True:
+        try:
+            init_joystick()
+            if len(joysticks)<1:
+                time.sleep(1)
+                pygame.joystick.quit()
+            else:
+                main_loop()
+        except KeyboardInterrupt:
+            print("*** Ctrl+C pressed, exiting")
+            break
+    
+    bluetoothprocess.terminate()
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
