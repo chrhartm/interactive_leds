@@ -59,14 +59,16 @@ void setup()
 
   // LED stuff
   LEDS.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
-  LEDS.setBrightness(84);
-  value[0] = 0;
+  LEDS.setBrightness(255); //84
+  value[0] = 2;
   value[1] = 0;
-  value[2] = 253;
-  value[3] = 253;
-  value[4] = 253;
+  value[2] = 150;
+  value[3] = 250;
+  value[4] = 240;
   value[5] = 0;
   value[6] = 0;
+
+  value_raw[6] = 1;
 }
 
 void logger(){
