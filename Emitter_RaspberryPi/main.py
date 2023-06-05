@@ -1,12 +1,13 @@
-import pyaudio
+# import pyaudio
 import numpy as np
-import aubio
+# import aubio
 from collections import deque
-from RF24 import RF24
+from pyrf24 import RF24
 import pygame
 import time
-import imp
 import subprocess
+from bluepy.btle import Peripheral
+
 
 # Global parameters
 n_programs = 10
@@ -25,6 +26,7 @@ tolerance = 0.8 # pitch
 pitch_samples = 3
 energy_samples = 1 
 energies_decay = 1-1./(10*samplerate/buffer_size)
+audio = False
 
 # Joystick variables
 joysticks = []
@@ -36,20 +38,23 @@ program_states = [0, 220, 40, 150, 0]
 radio = RF24(25, 0);
 
 def init_bluetooth():
-    global bluetoothprocess
-    bluetoothprocess = subprocess.Popen(['bluetoothctl'],
-                                        shell=False,
-                                        stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE)
-    time.sleep(0.02)
-    bluetoothprocess.stdin.write('agent on\n')
-    time.sleep(0.02)
-    bluetoothprocess.stdin.write('connect DB:F6:AB:36:77:85\n')
-    time.sleep(1)
-    bluetoothprocess.stdin.write('connect FF:6C:F2:BA:E9:AA\n')
-    time.sleep(1)
-    bluetoothprocess.stdin.write('exit\n')
-    print(bluetoothprocess.stdout.read())
+    global device1, device2
+    try:
+        bprocess = subprocess.Popen(["bluetoothctl"], stdin=subprocess.PIPE)
+        bprocess.stdin.write(f"connect DB:F6:AB:36:77:85".encode())
+        bprocess.stdin.flush()
+        bprocess.stdin.close()
+        bprocess.wait()
+    except:
+        print("couldn't find device1")
+    try:
+        bprocess = subprocess.Popen(["bluetoothctl"], stdin=subprocess.PIPE)
+        bprocess.stdin.write(f"connect FF:6C:F2:BA:E9:AA".encode())
+        bprocess.stdin.flush()
+        bprocess.stdin.close()
+        bprocess.wait()
+    except:
+        print("couldn't find device2")    
 
 def init_joystick():
     global joysticks, joystick_lastactive
@@ -64,6 +69,7 @@ def init_joystick():
         joysticks[-1].init()
         joystick_lastactive = time.time()
         print ("Detected joystick "),joysticks[-1].get_name(),"'"
+
 
 def init_radio():
     # Radio setup
@@ -249,6 +255,7 @@ def main_loop():
         if(audio):
             get_signal()
         else:
+            pass
             time.sleep(0.02)
         process_input()
         message = [program, program_states[0], program_states[1],
@@ -270,9 +277,12 @@ def main_loop():
     
 
 if (__name__ == '__main__'):
+    print("before wait")
+    time.sleep(100) # wait for startup to finish
+    print("after wait")
     init_bluetooth()
     init_radio()
-    init_audio()
+    # init_audio()
     if (not audio):
         n_programs = program_musical_start
     while True:
@@ -286,8 +296,7 @@ if (__name__ == '__main__'):
         except KeyboardInterrupt:
             print("*** Ctrl+C pressed, exiting")
             break
-    
-    bluetoothprocess.terminate()
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+    if (audio):
+        stream.stop_stream()
+        stream.close()
+        p.terminate()

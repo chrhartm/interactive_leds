@@ -38,3 +38,4 @@ Remote-control LED strips
   - Board: Arduino Nano
   - Processor: ATmega328P
   - Programmer: AVRISP mkll
+  
