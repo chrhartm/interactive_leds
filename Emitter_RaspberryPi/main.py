@@ -2,11 +2,13 @@
 import numpy as np
 # import aubio
 from collections import deque
-from pyrf24 import RF24
-import pygame
+from pyrf24 import RF24, RF24_PA_HIGH, RF24_PA_LOW #max too max
 import time
 import subprocess
-from bluepy.btle import Peripheral
+import os
+# Needed for pygame when running from cron
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+import pygame
 
 
 # Global parameters
@@ -15,7 +17,7 @@ program_start = 0
 program_musical_start = 6
 program = program_start
 button_delta = 2
-joystick_timeout = 30 # in minutes?
+joystick_timeout = 30 # in seconds
 joystick_lastactive = time.time()
 # allowed sample rates 44100 32000 22050 16000
 # samplerate, win_s = 44100, 4096
@@ -30,7 +32,6 @@ audio = False
 
 # Joystick variables
 joysticks = []
-# 1, 2, 3, 4, L1, R1, L2, R2, Start, Select
 button_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 program_states = [0, 220, 40, 150, 0]
 
@@ -45,6 +46,7 @@ def init_bluetooth():
         bprocess.stdin.flush()
         bprocess.stdin.close()
         bprocess.wait()
+        time.sleep(2)
     except:
         print("couldn't find device1")
     try:
@@ -53,6 +55,7 @@ def init_bluetooth():
         bprocess.stdin.flush()
         bprocess.stdin.close()
         bprocess.wait()
+        time.sleep(2)
     except:
         print("couldn't find device2")    
 
@@ -80,6 +83,7 @@ def init_radio():
     radio.enableDynamicPayloads()
     radio.setAutoAck(False)
     radio.setChannel(90)
+    radio.setPALevel(RF24_PA_LOW, 1)
     radio.openWritingPipe(pipes)
     radio.stopListening()
 
@@ -153,7 +157,6 @@ def process_input():
     global program, button_states, program_states
     for event in pygame.event.get():
         joystick_lastactive = time.time()
-        # print(event)
         if(event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP):
             if event.type == pygame.JOYBUTTONUP:
                 value = False
@@ -255,8 +258,7 @@ def main_loop():
         if(audio):
             get_signal()
         else:
-            pass
-            time.sleep(0.02)
+            time.sleep(0.05)
         process_input()
         message = [program, program_states[0], program_states[1],
                     program_states[2], program_states[3], 
@@ -265,7 +267,7 @@ def main_loop():
             for e in energies:
                 message.append(e)
             message.append(pitch)
-                     
+        
         send_arduino(message)
         
         if (time.time() - joystick_lastactive > joystick_timeout):
@@ -277,11 +279,10 @@ def main_loop():
     
 
 if (__name__ == '__main__'):
-    print("before wait")
-    time.sleep(100) # wait for startup to finish
-    print("after wait")
     init_bluetooth()
+    print("after bluetooth")
     init_radio()
+    print("after radio")
     # init_audio()
     if (not audio):
         n_programs = program_musical_start

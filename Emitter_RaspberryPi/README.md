@@ -4,8 +4,7 @@ Notes on setup
 
 ```
 sudo crontab -e
-@reboot python /home/pi/Desktop/interactive_leds/Emitter_RaspberryPi/main.py >> /home/pi/Desktop/interactive_leds/Emitter_RaspberryPi/cron.log &
-```
+@reboot sleep 30 && python /home/<USER>/Desktop/interactive_leds/Emitter_RaspberryPi/main.py >> /home/<USER>/Desktop/interactive_leds/Emitter_RaspberryPi/cron.log 2>&1```
 
 
 # Notes for bluetooth
