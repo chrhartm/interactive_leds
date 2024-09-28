@@ -1,6 +1,9 @@
-# import pyaudio
+audio = False
+if audio:
+    import pyaudio
+    import aubio
+
 import numpy as np
-# import aubio
 from collections import deque
 from pyrf24 import RF24, RF24_PA_HIGH, RF24_PA_LOW #max too max
 import time
@@ -28,51 +31,27 @@ tolerance = 0.8 # pitch
 pitch_samples = 3
 energy_samples = 1 
 energies_decay = 1-1./(10*samplerate/buffer_size)
-audio = False
 
-# Joystick variables
-joysticks = []
-button_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+# SNES controller variables
+snes_controller = None
+button_states = [0] * 8  # SNES controller has 8 buttons
 program_states = [0, 220, 40, 150, 0]
 
 # Radio variables
 radio = RF24(25, 0);
 
-def init_bluetooth():
-    global device1, device2
-    try:
-        bprocess = subprocess.Popen(["bluetoothctl"], stdin=subprocess.PIPE)
-        bprocess.stdin.write(f"connect DB:F6:AB:36:77:85".encode())
-        bprocess.stdin.flush()
-        bprocess.stdin.close()
-        bprocess.wait()
-        time.sleep(2)
-    except:
-        print("couldn't find device1")
-    try:
-        bprocess = subprocess.Popen(["bluetoothctl"], stdin=subprocess.PIPE)
-        bprocess.stdin.write(f"connect FF:6C:F2:BA:E9:AA".encode())
-        bprocess.stdin.flush()
-        bprocess.stdin.close()
-        bprocess.wait()
-        time.sleep(2)
-    except:
-        print("couldn't find device2")    
-
-def init_joystick():
-    global joysticks, joystick_lastactive
-    # Joystick setup
-    pygame.joystick.quit()
-    pygame.quit()
+def init_snes_controller():
+    global snes_controller, joystick_lastactive
     pygame.init()
     pygame.joystick.init()
-
-    for i in range(0, pygame.joystick.get_count()):
-        joysticks.append(pygame.joystick.Joystick(i))
-        joysticks[-1].init()
+    
+    if pygame.joystick.get_count() > 0:
+        snes_controller = pygame.joystick.Joystick(0)
+        snes_controller.init()
         joystick_lastactive = time.time()
-        print ("Detected joystick "),joysticks[-1].get_name(),"'"
-
+        print("SNES controller initialized:", snes_controller.get_name())
+    else:
+        print("No SNES controller found")
 
 def init_radio():
     # Radio setup
@@ -154,105 +133,44 @@ def send_arduino(message):
     radio.write(bytearray(message))
     
 def process_input():
-    global program, button_states, program_states
+    global program, button_states, program_states, joystick_lastactive
     for event in pygame.event.get():
         joystick_lastactive = time.time()
-        if(event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP):
-            if event.type == pygame.JOYBUTTONUP:
-                value = False
-            else:
-                value = True
-            if event.button in [6,7,8,9,10,11,12]:
-                button_states[8] = value
-            if event.button == 6:
-                program = 0
-            elif event.button == 7:
-                program = 1
-            elif event.button == 8:
-                pass
-                program = (program+1)%program_musical_start
-            elif event.button == 9:
-                program = 2
-            elif event.button == 10:
-                program = 3
-            elif event.button == 11:
-                program = 4
-            elif event.button == 12:
-                program = 5
-            elif event.button in [4,5,13,14]:
-                button_states[9] = value
-            elif event.button == 0:
-                button_states[1] = value
-            elif event.button == 1:
-                button_states[3] = value
-            elif event.button == 2:
-                button_states[2] = value
-            elif event.button == 3:
-                button_states[0] = value
-
+        if event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP:
+            button_value = event.type == pygame.JOYBUTTONDOWN
+            if event.button < 8:  # SNES controller has 8 buttons
+                button_states[event.button] = button_value
+        
         if event.type == pygame.JOYAXISMOTION:
-            # Mirror right button logic on same layout
-            if event.axis==3 and event.value < 0:
-                button_states[0] = True
-            if event.axis==3 and event.value > 0:
-                button_states[1] = True
-            if event.axis == 2 and event.value < 0:
-                button_states[2] = True
-            if event.axis == 2 and event.value > 0:
-                button_states[3] = True
-            if event.axis == 3 and event.value == 0:
-                button_states[1] = button_states[0] = False
-            if event.axis == 2 and event.value == 0:
-                button_states[2] = button_states[3] = False
-            # Joy hat logic
-            if event.axis==0 and event.value < 0:
-                button_states[5] = True
-            if event.axis==0 and event.value > 0:
-                button_states[4] = True
-            if event.axis == 1 and event.value < 0:
-                button_states[6] = True
-            if event.axis == 1 and event.value > 0:
-                button_states[7] = True
-            if event.axis == 0 and event.value == 0:
-                button_states[4] = button_states[5] = False
-            if event.axis == 1 and event.value == 0:
-                button_states[7] = button_states[6] = False          
-        if event.type == pygame.JOYHATMOTION:
-            if event.value == (-1, 0):
-                button_states[5] = True
-            if event.value == (1, 0):
-                button_states[4] = True
-            if event.value == (0, -1):
-                button_states[7] = True
-            if event.value == (0, 1):
-                button_states[6] = True
-            if event.value == (0, 0):
-                button_states[4] = button_states[5] = False
-                button_states[6] = button_states[7] = False
-                
-    if button_states[0] and program_states[1]<255-button_delta:
-        program_states[1] += button_delta
-    if button_states[1] and program_states[1]>=button_delta:
-        program_states[1] -= button_delta
-    if button_states[2] and program_states[2]<255-button_delta:
-        program_states[2] += button_delta
-    if button_states[3] and program_states[2]>=button_delta:
-        program_states[2] -= button_delta
-    if button_states[4] and program_states[3]<255-button_delta:
-        program_states[3] += button_delta
-    if button_states[5] and program_states[3]>=button_delta:
-        program_states[3] -= button_delta
-    if button_states[6] and program_states[4]<255-button_delta:
-        program_states[4] += button_delta
-    if button_states[7] and program_states[4]>=button_delta:
-        program_states[4] -= button_delta
-    if button_states[9]:
+            # D-pad on SNES controller is typically mapped to axes
+            if event.axis == 0:  # Left-Right
+                button_states[4] = event.value > 0.5  # Right
+                button_states[5] = event.value < -0.5  # Left
+            elif event.axis == 1:  # Up-Down
+                button_states[6] = event.value < -0.5  # Up
+                button_states[7] = event.value > 0.5  # Down
+
+    # Map SNES buttons to program states
+    if button_states[0]:  # A button
+        program = (program + 1) % n_programs
+    if button_states[1]:  # B button
+        program = 0
+    if button_states[2]:  # X button
         program_states[0] = 1
     else:
         program_states[0] = 0
+    
+    if button_states[4] and program_states[1]<255-button_delta:
+        program_states[1] += button_delta
+    if button_states[5] and program_states[1]>=button_delta:
+        program_states[1] -= button_delta
+    if button_states[6] and program_states[2]<255-button_delta:
+        program_states[2] += button_delta
+    if button_states[7] and program_states[2]>=button_delta:
+        program_states[2] -= button_delta
 
 def main_loop():
-    global joysticks, joystick_lastactive, joystick_timeout
+    global joystick_lastactive, joystick_timeout
     
     while True:
         if(audio):
@@ -271,25 +189,21 @@ def main_loop():
         send_arduino(message)
         
         if (time.time() - joystick_lastactive > joystick_timeout):
-            joysticks = []
-            print("lost joystick")
+            print("lost SNES controller")
             break
             
 
-    
-
 if (__name__ == '__main__'):
-    init_bluetooth()
-    print("after bluetooth")
+    print("Initializing...")
     init_radio()
-    print("after radio")
+    print("Radio initialized")
     # init_audio()
     if (not audio):
         n_programs = program_musical_start
     while True:
         try:
-            init_joystick()
-            if len(joysticks)<1:
+            init_snes_controller()
+            if snes_controller is None:
                 time.sleep(1)
                 pygame.joystick.quit()
             else:
