@@ -20,6 +20,8 @@ program_start = 0
 program_musical_start = 6
 program = program_start
 button_delta = 2
+forward_inactive = True
+back_inactive = True
 joystick_timeout = 30 # in seconds
 joystick_lastactive = time.time()
 # allowed sample rates 44100 32000 22050 16000
@@ -34,7 +36,7 @@ energies_decay = 1-1./(10*samplerate/buffer_size)
 
 # SNES controller variables
 snes_controller = None
-button_states = [0] * 8  # SNES controller has 8 buttons
+button_states = [0] * 12
 program_states = [0, 220, 40, 150, 0]
 
 # Radio variables
@@ -133,41 +135,61 @@ def send_arduino(message):
     radio.write(bytearray(message))
     
 def process_input():
-    global program, button_states, program_states, joystick_lastactive
+    global program, button_states, program_states, joystick_lastactive, forward_inactive, back_inactive
     for event in pygame.event.get():
         joystick_lastactive = time.time()
         if event.type == pygame.JOYBUTTONDOWN or event.type == pygame.JOYBUTTONUP:
             button_value = event.type == pygame.JOYBUTTONDOWN
-            if event.button < 8:  # SNES controller has 8 buttons
+            if event.button < 10:  # SNES controller has 8 buttons
                 button_states[event.button] = button_value
         
         if event.type == pygame.JOYAXISMOTION:
             # D-pad on SNES controller is typically mapped to axes
             if event.axis == 0:  # Left-Right
-                button_states[4] = event.value > 0.5  # Right
-                button_states[5] = event.value < -0.5  # Left
+                button_states[7] = event.value > 0.5  # Right
+                button_states[6] = event.value < -0.5  # Left
+                if event.value == 0:
+                    button_states[6] = button_states[7] = 0
             elif event.axis == 1:  # Up-Down
-                button_states[6] = event.value < -0.5  # Up
-                button_states[7] = event.value > 0.5  # Down
+                button_states[11] = event.value < -0.5  # Up
+                button_states[10] = event.value > 0.5  # Down
+                if event.value == 0:
+                    button_states[10] = button_states[11] = 0
 
     # Map SNES buttons to program states
-    if button_states[0]:  # A button
+    if button_states[9] and forward_inactive:  
         program = (program + 1) % n_programs
-    if button_states[1]:  # B button
-        program = 0
-    if button_states[2]:  # X button
+        forward_inactive = False
+    if not button_states[9]:
+        forward_inactive = True
+    if button_states[8] and back_inactive:  
+        program = (program - 1 + n_programs) % n_programs
+        back_inactive = False
+    if not button_states[8]:
+        back_inactive = True
+    if button_states[4] or button_states[5]: # back buttons 
         program_states[0] = 1
     else:
         program_states[0] = 0
     
-    if button_states[4] and program_states[1]<255-button_delta:
+    if button_states[0] and program_states[1]<255-button_delta:
         program_states[1] += button_delta
-    if button_states[5] and program_states[1]>=button_delta:
+    if button_states[3] and program_states[1]>=button_delta:
         program_states[1] -= button_delta
-    if button_states[6] and program_states[2]<255-button_delta:
+    if button_states[2] and program_states[2]<255-button_delta:
         program_states[2] += button_delta
-    if button_states[7] and program_states[2]>=button_delta:
+    if button_states[1] and program_states[2]>=button_delta:
         program_states[2] -= button_delta
+    if button_states[11] and program_states[3]<255-button_delta:
+        program_states[3] += button_delta
+    if button_states[10] and program_states[3]>=button_delta:
+        program_states[3] -= button_delta
+    if button_states[7] and program_states[4]<255-button_delta:
+        program_states[4] += button_delta
+    if button_states[6] and program_states[4]>=button_delta:
+        program_states[4] -= button_delta
+        
+    print(program_states)
 
 def main_loop():
     global joystick_lastactive, joystick_timeout
